@@ -10,74 +10,57 @@ identify and serve appropriately.
 alter table bank_customer
 add  status varchar(15);
 
-SELECT * FROM BANK_ACCOUNT WHERE CUSTOMER_ID = 12;
-
-CREATE OR REPLACE PROCEDURE SET_CUSTOMER_VIP_STATUS(P_CUSTOMER_ID NUMBER)
-AS
-BEGIN
-    UPDATE BANK_CUSTOMER
-    SET STATUS = 'VIP'
-    WHERE CUSTOMER_ID = P_CUSTOMER_ID;
-END;
-
 COMMIT;
-SELECT * FROM BANK_CUSTOMER;
-
+drop trigger customer_vip_status;
+set serveroutput on;
 
 CREATE OR REPLACE TRIGGER CUSTOMER_VIP_STATUS 
 BEFORE INSERT OR UPDATE OF BALANCE 
     ON BANK_ACCOUNT
-    FOR EACH ROW 
     DECLARE
-    L_CUSTOMER_ID NUMBER;
+    type customer_id_arr is table of number index by pls_integer;
+    L_CUSTOMER_ID customer_id_arr;
     SUM_ACCOUNTS FLOAT := 0;
     BEGIN 
-        FOR CUST IN (SELECT DISTINCT CUSTOMER_ID
+        select distinct customer_id
+        bulk collect into l_customer_id
+        from bank_account;
+
+        for i in 1..l_customer_id.count loop
+            SELECT SUM(
+                        
+                        CASE 
+                            WHEN CURRENCY = 'BGN' THEN BALANCE
+                            ELSE EXCHANGE_CURRENCY(CURRENCY,'BGN',BALANCE)
+                        END
+                        ) INTO SUM_ACCOUNTS 
                         FROM BANK_ACCOUNT
-                        WHERE CUSTOMER_ID IN (SELECT DISTINCT CUSTOMER_ID 
-                                                FROM BANK_ACCOUNT)) 
-                                                
-        SELECT SUM(
-                    
-                    CASE 
-                        WHEN : NEW.CURRENCY = 'BGN' THEN :NEW.BALANCE
-                        ELSE EXCHANGE_CURRENCY(:OLD.CURRENCY,'BGN',:NEW.BALANCE)
-                    END
-                    ) INTO SUM_ACCOUNTS 
-                    FROM BANK_ACCOUNT
-                    WHERE  CUSTOMER_ID = L_CUSTOMER_ID;
+                        WHERE  CUSTOMER_ID = L_CUSTOMER_ID(i);
         
-        IF SUM_ACCOUNTS > 100000 THEN 
-            L_CUSTOMER_ID := :OLD.CUSTOMER_ID;
-            SET_CUSTOMER_VIP_STATUS(L_CUSTOMER_ID);
+        IF SUM_ACCOUNTS > 10000 THEN 
+                UPDATE BANK_CUSTOMER
+                SET STATUS = 'VIP'
+                WHERE CUSTOMER_ID = L_CUSTOMER_ID(i);
         
-    END IF;
+        END IF;
+        end loop;
     EXCEPTION
     WHEN OTHERS THEN
     DBMS_OUTPUT.PUT_LINE('ERROR: '|| SQLERRM);
     
     END;  
         
-
-    
 SELECT * FROM BANK_ACCOUNT
-WHERE CUSTOMER_ID=12;    
+
+WHERE CUSTOMER_ID=3;    
+
             UPDATE BANK_ACCOUNT 
-            SET BALANCE=1000124
+            SET BALANCE=0
             WHERE B_ACCOUNT = 'BGN2';
     SELECT * FROM BANK_CUSTOMER;
-UPDATE 
+
 commit;
 
-      SELECT SUM(
-                    
-                    CASE 
-                        WHEN CURRENCY = 'BGN' THEN BALANCE
-                        ELSE EXCHANGE_CURRENCY(CURRENCY,'BGN',BALANCE)
-                    END
-                    ) 
-                    FROM BANK_ACCOUNT 
-                    WHERE CUSTOMER_ID = 12;
 /*
 2. Rewrite the functionality from the first project (home
 work 1), which monitors the movement of employees between departments,
