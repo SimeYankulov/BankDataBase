@@ -147,9 +147,13 @@ BEGIN
         JOB_ACTION      => 'BEGIN FIND_INACTIVE_USERS; END;',
         START_DATE      => SYSTIMESTAMP,
         REPEAT_INTERVAL => 'FREQ = DAILY; INTERVAL = 1',
-        ENABLED         => TRUE
+        ENABLED         => FALSE
     );
 END;
+
+SELECT * FROM BANK_USER;
+
+SELECT * FROM INACTIVE_USER;
 /*
 3. A package of CRUD operations to handle users who
 use the app.
@@ -258,12 +262,20 @@ BEGIN
         JOB_ACTION      => 'BEGIN FIND_NOT_UPDATED_USERS; END;',
         START_DATE      => SYSTIMESTAMP,
         REPEAT_INTERVAL => 'FREQ = DAILY; INTERVAL = 1',
-        ENABLED         => TRUE
+        ENABLED         => FALSE
     );
 END;
+
+SELECT * FROM BANK_USER;
+
+UPDATE BANK_USER 
+SET LAST_UPDATE = SYSDATE - 90
+WHERE USER_ID = 4;
+
+SELECT * FROM NOT_UPDATED_USER;
 /*
 5. Scheduled job to monitor availability on the accounts and yes
-updates each customer's status to “VIP” when the value
+updates each customer's status to â€œVIPâ€ when the value
 becomes greater than 100000.
 */
 
@@ -300,20 +312,17 @@ BEGIN
     DBMS_SCHEDULER.CREATE_JOB(
         JOB_NAME    => 'UPDATE_VIP_STATUS_JOB',
         JOB_TYPE    => 'PLSQL_BLOCK',
-        JOB_ACTION  => 'BEGIN CALL UPDATE_VIP_STATUS(); END;',
+        JOB_ACTION  => 'BEGIN UPDATE_VIP_STATUS(); END;',
         START_DATE      => SYSTIMESTAMP,
         REPEAT_INTERVAL => 'FREQ = DAILY; INTERVAL = 1',
-        ENABLED         => TRUE
+        ENABLED         => FALSE
     );
 END;
 
 SELECT * FROM BANK_CUSTOMER;
 
 UPDATE BANK_CUSTOMER 
-SET STATUS = ' '
-WHERE STATUS = 'VIP'    
+SET STATUS = ' '  
 
 CALL UPDATE_VIP_STATUS();
-
-SELECT * FROM BANK_ACCOUNT WHERE CUSTOMER_ID = 3;
 commit;
